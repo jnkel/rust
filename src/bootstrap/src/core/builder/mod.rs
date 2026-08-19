@@ -1378,7 +1378,8 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
         // Ensure that the downloaded LLVM libraries can be found.
         if self.config.llvm_ci_mode.download_from_ci() {
             let ci_llvm_lib = self.out.join(compiler.host).join("ci-llvm").join("lib");
-            dylib_dirs.push(ci_llvm_lib);
+            // CI LLVM should be lower priority the compiler's lib dir.
+            dylib_dirs.insert(0, ci_llvm_lib);
         }
 
         dylib_dirs
