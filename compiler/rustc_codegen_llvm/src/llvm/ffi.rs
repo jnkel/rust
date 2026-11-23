@@ -2427,7 +2427,7 @@ unsafe extern "C" {
         Builder: &DIBuilder<'a>,
         CountNode: Option<&'a Metadata>,
         LB: &'a Metadata,
-        UB: &'a Metadata,
+        UB: Option<&'a Metadata>,
         Stride: Option<&'a Metadata>,
     ) -> &'a Metadata;
 

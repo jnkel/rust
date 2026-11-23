@@ -4,7 +4,7 @@ use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
 use std::{assert_matches, iter, ptr};
 
-use libc::{c_longlong, c_uint};
+use libc::c_uint;
 use rustc_abi::{Align, Endian, Layout, NumScalableVectors, Size};
 use rustc_ast::{IntTy, UintTy};
 use rustc_codegen_ssa::debuginfo::type_names::{VTableNameKind, cpp_like_debuginfo};
@@ -111,11 +111,21 @@ fn build_fixed_size_array_di_node<'ll, 'tcx>(
 
     let (size, align) = cx.spanned_size_and_align_of(array_type, span);
 
-    let upper_bound = len
-        .try_to_target_usize(cx.tcx)
-        .expect("expected monomorphic const in codegen") as c_longlong;
+    let upper_bound = TryInto::<i64>::try_into(
+        len.try_to_target_usize(cx.tcx).expect("expected monomorphic const in codegen"),
+    )
+    .unwrap_or(-1);
 
-    let subrange = unsafe { llvm::LLVMDIBuilderGetOrCreateSubrange(DIB(cx), 0, upper_bound) };
+    let subrange = unsafe {
+        llvm::LLVMRustDIGetOrCreateSubrange(
+            DIB(cx),
+            /* CountNode */
+            Some(llvm::LLVMValueAsMetadata(cx.const_i64(upper_bound))),
+            /* LB */ llvm::LLVMValueAsMetadata(cx.const_u64(0)),
+            /* UB */ None,
+            /* Stride */ None,
+        )
+    };
     let subscripts = &[subrange];
 
     let di_node = unsafe {
@@ -1246,7 +1256,7 @@ fn build_scalable_vector_di_node<'ll, 'tcx>(
             di_builder,
             /* CountNode */ None,
             llvm::LLVMValueAsMetadata(cx.const_i64(0)),
-            upper,
+            Some(upper),
             /* Stride */ None,
         );
         let subscripts = create_DIArray(di_builder, &[Some(subrange)]);
